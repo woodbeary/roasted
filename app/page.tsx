@@ -36,6 +36,8 @@ export default function LandingPage() {
   const [socialMediaImageUrl, setSocialMediaImageUrl] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
   const [sessionSubmitted, setSessionSubmitted] = useSessionStorage<boolean>('hasSubmittedSession', false);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
 
   const implementationDate = new Date('2024-10-18').toLocaleDateString('en-US', {
     year: 'numeric',
@@ -67,7 +69,6 @@ export default function LandingPage() {
     } catch (error) {
       console.error('Error accessing camera:', error);
       setHasCameraPermission(false);
-      setShowSocialMediaInput(true);
     }
   };
 
@@ -82,20 +83,16 @@ export default function LandingPage() {
     reader.readAsDataURL(compressedFile);
   };
 
-  const handleSocialMediaImageLoad = async (platform: string, username: string) => {
-    try {
-      const imageUrl = await getProfilePictureUrl(platform, username);
-      setSocialMediaImageUrl(imageUrl);
-    } catch (error) {
-      console.error('Error loading social media image:', error);
-      alert('Failed to load social media profile picture. Please try again.');
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  };
-
-  const checkEmailSubmission = async (email: string) => {
-    const q = query(collection(db, 'roasts'), where('email', '==', email));
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
   };
 
   const handleSubmit = async () => {
@@ -121,10 +118,9 @@ export default function LandingPage() {
       let imageData;
       if (capturedImage) {
         imageData = capturedImage.split(',')[1];
-      } else if (socialMediaImageUrl) {
-        const response = await fetch(socialMediaImageUrl);
-        const blob = await response.blob();
-        const base64 = await blobToBase64(blob);
+      } else if (uploadedImage) {
+        const compressedFile = await compressImage(uploadedImage);
+        const base64 = await blobToBase64(compressedFile);
         imageData = base64.split(',')[1];
       } else {
         throw new Error("No image data available");
@@ -192,19 +188,10 @@ export default function LandingPage() {
     }
   };
 
-  const getProfilePictureUrl = async (platform: string, username: string) => {
-    // This is a placeholder function. In a real-world scenario, you'd need to implement
-    // proper API calls to fetch profile pictures from social media platforms.
-    switch (platform) {
-      case 'instagram':
-        return `https://instagram.com/${username}/profile_picture`;
-      case 'facebook':
-        return `https://graph.facebook.com/${username}/picture?type=large`;
-      case 'twitter':
-        return `https://twitter.com/${username}/profile_image?size=original`;
-      default:
-        throw new Error("Unsupported platform");
-    }
+  const checkEmailSubmission = async (email: string) => {
+    const q = query(collection(db, 'roasts'), where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
   };
 
   const compressImage = async (imageFile: File) => {
@@ -240,7 +227,25 @@ export default function LandingPage() {
       return <div>Requesting camera access...</div>;
     }
 
-    if (!capturedImage) {
+    if (hasCameraPermission === false) {
+      return (
+        <div className="space-y-4">
+          <p>Camera access is required to take a selfie. Please enable your camera and refresh the page.</p>
+          <p>Alternatively, you can upload a photo:</p>
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+          />
+          {uploadedImagePreview && (
+            <img src={uploadedImagePreview} alt="Uploaded" className="w-32 h-32 mx-auto rounded-lg object-cover" />
+          )}
+        </div>
+      );
+    }
+
+    if (!capturedImage && !uploadedImage) {
       return (
         <div className="space-y-4">
           <p className="text-sm text-gray-400">Your image will not be stored or shared.</p>
@@ -270,7 +275,13 @@ export default function LandingPage() {
             required
           />
           <div className="flex items-center space-x-4">
-            <img src={capturedImage} alt="Captured" className="w-16 h-16 rounded-lg object-cover" />
+            {(capturedImage || uploadedImagePreview) && (
+              <img 
+                src={capturedImage || uploadedImagePreview || undefined} 
+                alt="Captured" 
+                className="w-16 h-16 rounded-lg object-cover" 
+              />
+            )}
             <Button 
               onClick={handleSubmit} 
               className="flex-grow bg-purple-600 hover:bg-purple-700"
@@ -312,59 +323,6 @@ export default function LandingPage() {
         <p>Nickname: {gptResponse.nickname}</p>
         <p className="text-sm">Check back later as your ranking might change if others score higher.</p>
         <p className="text-sm text-gray-400">Your image has been discarded and was not stored or shared.</p>
-      </div>
-    );
-  };
-
-  const renderSocialMediaContent = () => {
-    return (
-      <div className="space-y-4">
-        <p>No camera access. Please use your social media profile instead.</p>
-        <Select onValueChange={setSocialPlatform}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select social media platform" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="instagram">Instagram</SelectItem>
-            <SelectItem value="facebook">Facebook</SelectItem>
-            <SelectItem value="twitter">Twitter</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          type="text"
-          placeholder="Enter your username"
-          value={socialUsername}
-          onChange={(e) => setSocialUsername(e.target.value)}
-          required
-        />
-        <Button
-          onClick={() => handleSocialMediaImageLoad(socialPlatform, socialUsername)}
-          disabled={!socialPlatform || !socialUsername}
-          className="w-full bg-purple-600 hover:bg-purple-700"
-        >
-          Load Profile Picture
-        </Button>
-        {socialMediaImageUrl && (
-          <img src={socialMediaImageUrl} alt="Profile" className="w-32 h-32 mx-auto rounded-full object-cover" />
-        )}
-        <Input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <ReCAPTCHA
-          sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-          onChange={setCaptchaValue}
-        />
-        <Button 
-          onClick={handleSubmit}
-          disabled={!socialPlatform || !socialUsername || !email || !captchaValue || !socialMediaImageUrl}
-          className="w-full bg-purple-600 hover:bg-purple-700"
-        >
-          Generate Roast <ArrowRight className="ml-2" size={16} />
-        </Button>
       </div>
     );
   };
@@ -423,36 +381,53 @@ export default function LandingPage() {
                 </div>
               ) : hasCameraPermission ? (
                 renderCameraContent()
-              ) : showSocialMediaInput ? (
-                renderSocialMediaContent()
               ) : null}
             </DialogContent>
           </Dialog>
         </section>
 
-        <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center">
-          <h2 className="text-2xl font-bold mb-4">Two Ways to Join the Party</h2>
+        <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center space-y-6">
+          <h2 className="text-3xl font-bold">Discover the Magic Mirror</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <Gift className="mx-auto" size={48} />
-              <h3 className="text-xl font-semibold">Test Your Luck</h3>
-              <p>Top 5 leaderboard scores win free entry and a Magic Mirror!</p>
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-500 hover:bg-green-600" disabled={hasSubmitted || sessionSubmitted}>
-                    {hasSubmitted || sessionSubmitted ? 'Already Submitted' : 'Start Your Roast'}
-                  </Button>
-                </DialogTrigger>
-                {/* ... (DialogContent remains the same) */}
-              </Dialog>
+            <div className="bg-purple-800 bg-opacity-50 rounded-xl p-6 space-y-4">
+              <Gift className="mx-auto text-yellow-400" size={48} />
+              <h3 className="text-2xl font-semibold">Enchanting Features</h3>
+              <ul className="text-left space-y-2">
+                <li className="flex items-center">
+                  <ArrowRight className="mr-2 text-yellow-400" size={16} />
+                  AI Companion
+                </li>
+                <li className="flex items-center">
+                  <ArrowRight className="mr-2 text-yellow-400" size={16} />
+                  Voice Interaction
+                </li>
+                <li className="flex items-center">
+                  <ArrowRight className="mr-2 text-yellow-400" size={16} />
+                  Daily Insights
+                </li>
+                <li className="flex items-center">
+                  <ArrowRight className="mr-2 text-yellow-400" size={16} />
+                  Smart Reminders
+                </li>
+              </ul>
+              <p className="text-sm italic text-purple-200">Step into a world where your reflection holds more than meets the eye.</p>
             </div>
-            <div className="space-y-4">
-              <ShoppingCart className="mx-auto" size={48} />
-              <h3 className="text-xl font-semibold">Guaranteed Entry</h3>
-              <p>Skip the competition and secure your spot for just $123!</p>
-              <Button className="bg-blue-500 hover:bg-blue-600">
-                Buy Now for $123
-              </Button>
+            <div className="bg-purple-800 bg-opacity-50 rounded-xl p-6 space-y-4 flex flex-col justify-between">
+              <div>
+                <ShoppingCart className="mx-auto text-green-400" size={48} />
+                <h3 className="text-2xl font-semibold mt-4">Preorder Now</h3>
+                <p className="mt-2">Be among the first to bring the magic home. Skip the wait and secure your Magic Mirror!</p>
+              </div>
+              <a 
+                href="https://whitemirror.vercel.app" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-block"
+              >
+                <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform transition duration-300 ease-in-out hover:scale-105">
+                  Preorder for $123
+                </Button>
+              </a>
             </div>
           </div>
         </section>
