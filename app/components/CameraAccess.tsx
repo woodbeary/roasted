@@ -1,29 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 
-const CameraAccess: React.FC = () => {
-  const [isEnabled, setIsEnabled] = useState(false);
+interface CameraAccessProps {
+  onPermissionChange: (hasPermission: boolean) => void;
+}
 
+const CameraAccess: React.FC<CameraAccessProps> = ({ onPermissionChange }) => {
   const handleEnableCamera = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      setIsEnabled(true);
+      onPermissionChange(true);
     } catch (error) {
       console.error('Error accessing camera and microphone:', error);
-      alert('Failed to access camera and microphone. Please check your permissions.');
+      onPermissionChange(false);
     }
   };
 
   return (
-    <Button 
-      className="w-full mb-4" 
-      onClick={handleEnableCamera}
-      disabled={isEnabled}
-    >
-      {isEnabled ? 'Camera & Microphone Enabled' : 'Enable Camera & Microphone'}
-    </Button>
+    <div className="text-center">
+      <p className="mb-4 text-gray-700">To get started, we need access to your camera and microphone.</p>
+      <Button onClick={handleEnableCamera} className="bg-blue-500 hover:bg-blue-600 text-white">
+        Enable Camera & Microphone
+      </Button>
+    </div>
   );
 };
 
