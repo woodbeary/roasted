@@ -1,23 +1,35 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Camera } from 'lucide-react';
 
 interface ImageCaptureProps {
   onCapture: (imageUrl: string) => void;
+  hasCameraPermission: boolean;
 }
 
-const ImageCapture: React.FC<ImageCaptureProps> = ({ onCapture }) => {
+const ImageCapture: React.FC<ImageCaptureProps> = ({ onCapture, hasCameraPermission }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (hasCameraPermission) {
+      startCamera();
+    }
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [hasCameraPermission]);
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCapturing(true);
+        videoRef.current.srcObject = mediaStream;
+        setStream(mediaStream);
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -32,26 +44,25 @@ const ImageCapture: React.FC<ImageCaptureProps> = ({ onCapture }) => {
       canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
       const imageDataUrl = canvas.toDataURL('image/jpeg');
       onCapture(imageDataUrl);
-      setIsCapturing(false);
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
     }
   };
 
   return (
     <div className="space-y-4">
-      {isCapturing ? (
-        <>
-          <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg" />
-          <Button onClick={captureImage} className="w-full bg-blue-500 hover:bg-blue-600 text-white">
-            <Camera className="mr-2" size={18} />
-            Capture Image
-          </Button>
-        </>
-      ) : (
-        <Button onClick={startCamera} className="w-full bg-blue-500 hover:bg-blue-600 text-white">
-          <Camera className="mr-2" size={18} />
-          Start Camera
-        </Button>
-      )}
+      <video 
+        ref={videoRef} 
+        autoPlay 
+        playsInline 
+        muted
+        className="w-full rounded-lg" 
+      />
+      <Button onClick={captureImage} className="w-full bg-blue-500 hover:bg-blue-600 text-white">
+        <Camera className="mr-2" size={18} />
+        Capture Image
+      </Button>
     </div>
   );
 };

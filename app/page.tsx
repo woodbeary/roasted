@@ -1,36 +1,42 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import CameraAccess from './components/CameraAccess';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import ImageCapture from './components/ImageCapture';
-import RoastGenerator from './components/RoastGenerator';
 import Leaderboard from './components/Leaderboard';
-import ChatBox from './components/ChatBox';
-import { Skeleton } from "@/components/ui/skeleton";
-import { User, Camera, Flame, ArrowRight } from 'lucide-react';
+import { Flame, Gift, ShoppingCart, Loader2, ArrowRight } from 'lucide-react';
 
 export default function LandingPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [socialPlatform, setSocialPlatform] = useState<string>('');
-  const [username, setUsername] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showSocialMediaInput, setShowSocialMediaInput] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [roastResult, setRoastResult] = useState<{ score: number; rank: number } | null>(null);
+
+  const implementationDate = new Date('2024-10-18').toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
   useEffect(() => {
-    requestCameraPermission();
-  }, []);
+    if (isModalOpen) {
+      requestCameraPermission();
+    }
+  }, [isModalOpen]);
 
   const requestCameraPermission = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      await navigator.mediaDevices.getUserMedia({ video: true });
       setHasCameraPermission(true);
     } catch (error) {
-      console.error('Error accessing camera and microphone:', error);
+      console.error('Error accessing camera:', error);
       setHasCameraPermission(false);
+      setShowSocialMediaInput(true);
     }
   };
 
@@ -38,27 +44,93 @@ export default function LandingPage() {
     setCapturedImage(imageUrl);
   };
 
-  const handleSocialMediaSubmit = (platform: string) => {
-    setSocialPlatform(platform);
+  const handleSubmit = () => {
     setIsLoading(true);
-    // Simulate API call to fetch profile picture
+    // Simulate API call
     setTimeout(() => {
-      setProfilePicture('https://placekitten.com/200/200'); // Placeholder image
+      const score = +(Math.random() * (10 - 7) + 7).toFixed(1);
+      const rank = Math.floor(Math.random() * 5) + 1;
+      setRoastResult({ score, rank });
       setIsLoading(false);
-    }, 2000);
+    }, 3000);
   };
 
-  const getPlaceholderText = () => {
-    switch (socialPlatform) {
-      case 'facebook':
-        return 'Enter your Facebook username';
-      case 'instagram':
-        return 'Enter your Instagram username';
-      case 'twitter':
-        return 'Enter your Twitter handle';
-      default:
-        return 'Enter your username';
+  const renderCameraContent = () => {
+    if (hasCameraPermission === null) {
+      return <div>Requesting camera access...</div>;
     }
+
+    if (!capturedImage) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">Your image will not be stored or shared.</p>
+          <ImageCapture onCapture={handleImageCapture} hasCameraPermission={hasCameraPermission} />
+        </div>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <div className="space-y-4 text-center">
+          <Loader2 className="w-10 h-10 animate-spin mx-auto" />
+          <p>Calculating your roast score...</p>
+          <p className="text-sm text-gray-400">Your image is being processed securely and will not be stored.</p>
+        </div>
+      );
+    }
+
+    if (roastResult) {
+      return (
+        <div className="space-y-4 text-center">
+          <h3 className="text-2xl font-bold">Results</h3>
+          <p className="text-xl">Your Roast Score: {roastResult.score}/10</p>
+          <p>You're currently ranked #{roastResult.rank} out of 5!</p>
+          <p className="text-sm">Check back later as your ranking might change if others score higher.</p>
+          <p className="text-sm text-gray-400">Your image has been discarded and was not stored or shared.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <p className="text-lg font-semibold">Good luck!</p>
+        <div className="flex items-center space-x-4">
+          <img src={capturedImage} alt="Captured" className="w-16 h-16 rounded-lg object-cover" />
+          <Button 
+            onClick={handleSubmit} 
+            className="flex-grow bg-purple-600 hover:bg-purple-700"
+          >
+            Submit Selfie
+          </Button>
+        </div>
+        <p className="text-sm text-gray-400">Your image will be processed securely and not stored.</p>
+      </div>
+    );
+  };
+
+  const renderSocialMediaContent = () => {
+    return (
+      <div className="space-y-4">
+        <p>No camera access. Please use your social media profile instead.</p>
+        <Select onValueChange={setSocialPlatform}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select social media platform" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="instagram">Instagram</SelectItem>
+            <SelectItem value="facebook">Facebook</SelectItem>
+            <SelectItem value="twitter">Twitter</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button 
+          onClick={handleSubmit}
+          disabled={!socialPlatform}
+          className="w-full bg-purple-600 hover:bg-purple-700"
+        >
+          Generate Roast <ArrowRight className="ml-2" size={16} />
+        </Button>
+      </div>
+    );
   };
 
   return (
@@ -68,7 +140,8 @@ export default function LandingPage() {
           <Flame className="mr-2 text-yellow-500" size={32} />
           roasted.lol
         </h1>
-        <p className="text-lg text-purple-300 mt-2">Get ready for an AI roasting experience!</p>
+        <p className="text-lg text-purple-300 mt-2">Get roasted by AI and win a Magic Mirror!</p>
+        <p className="text-sm text-yellow-300 mt-2">Coming {implementationDate}</p>
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
@@ -78,96 +151,81 @@ export default function LandingPage() {
             <div className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
               <div className="text-4xl mb-4">📸</div>
               <h3 className="text-xl font-semibold mb-2">1. Take a Selfie</h3>
-              <p>Snap a pic or use your social media profile</p>
+              <p>Snap a pic and get ready for a roast</p>
             </div>
             <div className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
               <div className="text-4xl mb-4">🤖</div>
-              <h3 className="text-xl font-semibold mb-2">2. AI Magic</h3>
-              <p>Our AI analyzes your photo and prepares a roast</p>
+              <h3 className="text-xl font-semibold mb-2">2. AI Roast</h3>
+              <p>Our AI prepares a hilarious, personalized roast</p>
             </div>
             <div className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
-              <div className="text-4xl mb-4">🔥</div>
-              <h3 className="text-xl font-semibold mb-2">3. Get Roasted</h3>
-              <p>Receive a hilarious, personalized roast (and maybe win a prize!)</p>
+              <div className="text-4xl mb-4">🏆</div>
+              <h3 className="text-xl font-semibold mb-2">3. Win Big</h3>
+              <p>Score in the top 5 and win a free Magic Mirror!</p>
             </div>
           </div>
         </section>
 
-        <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">Ready to Get Roasted?</h2>
-          {hasCameraPermission === null ? (
-            <CameraAccess onPermissionChange={setHasCameraPermission} />
-          ) : hasCameraPermission ? (
-            <div className="space-y-4">
-              <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden flex items-center justify-center">
-                {capturedImage ? (
-                  <img src={capturedImage} alt="Captured" className="w-full h-full object-cover" />
-                ) : (
-                  <Camera className="w-16 h-16 text-gray-400" />
-                )}
-              </div>
-              <ImageCapture onCapture={handleImageCapture} />
-              <Input 
-                placeholder="Enter a nickname for yourself"
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-white bg-opacity-20 border-purple-500"
-              />
-              <Button onClick={() => handleSocialMediaSubmit(socialPlatform)} className="w-full bg-purple-600 hover:bg-purple-700" disabled={!username}>
-                Generate Roast <ArrowRight className="ml-2" size={16} />
+        <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center">
+          <h2 className="text-2xl font-bold mb-4">Are You Feeling Lucky?</h2>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-green-500 hover:bg-green-600">
+                Test Your Luck
               </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-yellow-300">No camera access? Use your social media profile!</p>
-              <Select onValueChange={setSocialPlatform}>
-                <SelectTrigger className="w-full bg-white bg-opacity-20 border-purple-500">
-                  <SelectValue placeholder="Select social media platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="facebook">Facebook</SelectItem>
-                  <SelectItem value="instagram">Instagram</SelectItem>
-                  <SelectItem value="twitter">Twitter</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input 
-                placeholder={getPlaceholderText()}
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-white bg-opacity-20 border-purple-500"
-              />
-              <Button onClick={() => handleSocialMediaSubmit(socialPlatform)} className="w-full bg-purple-600 hover:bg-purple-700" disabled={!socialPlatform || !username}>
-                Generate Roast <ArrowRight className="ml-2" size={16} />
-              </Button>
-            </div>
-          )}
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {roastResult ? "Results" : (isLoading ? "Calculating..." : "Good luck!")}
+                </DialogTitle>
+              </DialogHeader>
+              {hasCameraPermission === null ? (
+                <div className="space-y-4">
+                  <p>Requesting camera access...</p>
+                </div>
+              ) : hasCameraPermission ? (
+                renderCameraContent()
+              ) : showSocialMediaInput ? (
+                renderSocialMediaContent()
+              ) : null}
+            </DialogContent>
+          </Dialog>
         </section>
 
-        {isLoading ? (
-          <div className="space-y-4 bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
-            <div className="w-full h-64 bg-black rounded-lg flex items-center justify-center">
-              <User className="w-16 h-16 text-gray-400" />
+        <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center">
+          <h2 className="text-2xl font-bold mb-4">Two Ways to Get Your Magic Mirror</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <Gift className="mx-auto" size={48} />
+              <h3 className="text-xl font-semibold">Test Your Luck</h3>
+              <p>Score in the top 5 on our leaderboard and win a free Magic Mirror!</p>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-500 hover:bg-green-600">
+                    Try Your Luck
+                  </Button>
+                </DialogTrigger>
+                {/* Use the same DialogContent as above */}
+              </Dialog>
             </div>
-            <Skeleton className="w-full h-32 rounded-lg bg-purple-700 bg-opacity-50" />
+            <div className="space-y-4">
+              <ShoppingCart className="mx-auto" size={48} />
+              <h3 className="text-xl font-semibold">Guaranteed Mirror</h3>
+              <p>Skip the competition and get your Magic Mirror for just $123!</p>
+              <Button className="bg-blue-500 hover:bg-blue-600">
+                Buy Now for $123
+              </Button>
+            </div>
           </div>
-        ) : profilePicture || capturedImage ? (
-          <div className="space-y-4 bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
-            <img 
-              src={profilePicture || capturedImage || ''} 
-              alt="Profile" 
-              className="w-full rounded-lg" 
-            />
-            <RoastGenerator imageUrl={profilePicture || capturedImage || ''} />
-          </div>
-        ) : null}
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ChatBox />
+        <div className="w-full">
           <Leaderboard />
         </div>
 
         <section className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Ready to Face the Heat?</h2>
+          <h2 className="text-2xl font-bold mb-4">Ready to Face the Heat and Win?</h2>
           <Button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="bg-yellow-500 hover:bg-yellow-600 text-black">
             Get Roasted Now!
           </Button>
@@ -177,7 +235,7 @@ export default function LandingPage() {
       <footer className="text-center py-6 border-t border-purple-700">
         <p className="text-sm text-purple-300">Powered by WhiteMirror</p>
         <a href="#" className="text-xs text-yellow-400 hover:underline">
-          Learn more about our AI smart mirror
+          Learn more about our AI Magic Mirror
         </a>
       </footer>
     </div>
