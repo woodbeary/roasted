@@ -237,6 +237,9 @@ export default function LandingPage() {
         <a href="#" className="text-xs text-yellow-400 hover:underline">
           Learn more about our AI Magic Mirror
         </a>
+        <a href="/qr" className="block mt-2 text-xs text-blue-400 hover:underline">
+          Follow us on X
+        </a>
       </footer>
     </div>
   );
