@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /roasts/{document} {
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/roasts/$(request.resource.data.email))
+                    && request.resource.data.keys().hasAll(['email', 'score', 'nickname', 'roast', 'timestamp'])
+                    && request.resource.data.score is number
+                    && request.resource.data.score >= 7
+                    && request.resource.data.score <= 10;
+      
+      allow read: if true;
+
+      // Other rules as necessary
+    }
+
+    // Other collections...
+  }
+}

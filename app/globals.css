@@ -76,3 +76,24 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Add this at the end of the file */
+.recaptcha-container {
+  position: relative;
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.recaptcha-container > div {
+  transform: scale(0.9);
+  transform-origin: center;
+}
+
+.dialog-content {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+

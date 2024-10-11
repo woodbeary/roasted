@@ -1,74 +1,46 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import React, { useEffect, useState } from 'react';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/app/firebase';
 
-interface LeaderboardEntry {
+interface RoastEntry {
   id: string;
   score: number;
-  celebLook: string;
-  imageUrl: string;
+  nickname: string;
   roast: string;
 }
 
-const Leaderboard: React.FC = () => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function Leaderboard() {
+  const [leaderboard, setLeaderboard] = useState<RoastEntry[]>([]);
 
   useEffect(() => {
-    fetchLeaderboard();
+    const q = query(collection(db, 'roasts'), orderBy('score', 'desc'), limit(5));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const entries: RoastEntry[] = [];
+      querySnapshot.forEach((doc) => {
+        entries.push({ id: doc.id, ...doc.data() } as RoastEntry);
+      });
+      setLeaderboard(entries);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const fetchLeaderboard = async () => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLeaderboard([
-        { id: '1', score: 9, celebLook: 'The Rock', imageUrl: 'https://placekitten.com/100/100', roast: "You look like The Rock, if he was made of marshmallows." },
-        { id: '2', score: 7, celebLook: 'Scarlett Johansson', imageUrl: 'https://placekitten.com/101/101', roast: "Scarlett Johansson called, she wants her 'meh' look back." },
-        { id: '3', score: 8, celebLook: 'Tony Stark', imageUrl: 'https://placekitten.com/102/102', roast: "Tony Stark without the stark and just the snark." },
-        // Add more entries to simulate top 20
-      ]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
   return (
-    <div className="border rounded-lg p-4 space-y-4">
-      <h2 className="text-xl font-bold">Leaderboard (Top 20)</h2>
-      {isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="w-full h-8" />
-          <Skeleton className="w-full h-8" />
-          <Skeleton className="w-full h-8" />
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {leaderboard.slice(0, 20).map((entry, index) => (
-            <Dialog key={entry.id}>
-              <DialogTrigger asChild>
-                <div className="flex justify-between items-center bg-white bg-opacity-10 p-2 rounded cursor-pointer hover:bg-opacity-20 transition-colors">
-                  <div>
-                    <span className="font-semibold">{index + 1}. {entry.celebLook}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold">{entry.score}/10</span>
-                  </div>
-                </div>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] bg-white text-black">
-                <div className="grid gap-4 py-4">
-                  <img src={entry.imageUrl} alt={entry.celebLook} className="w-full h-64 object-cover rounded" />
-                  <p className="text-lg font-semibold">{entry.roast}</p>
-                </div>
-              </DialogContent>
-            </Dialog>
-          ))}
-        </div>
-      )}
+    <div className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg">
+      <h2 className="text-2xl font-bold mb-4">Leaderboard</h2>
+      <ul className="space-y-4">
+        {leaderboard.map((entry, index) => (
+          <li key={entry.id} className="bg-white bg-opacity-5 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-bold text-lg">{index + 1}. {entry.nickname}</span>
+              <span className="text-yellow-300 font-bold">{entry.score.toFixed(1)}/10</span>
+            </div>
+            <p className="text-sm italic text-gray-300">&quot;{entry.roast}&quot;</p>
+          </li>
+        ))}
+      </ul>
     </div>
   );
-};
-
-export default Leaderboard;
+}

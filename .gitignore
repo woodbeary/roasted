@@ -34,3 +34,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+roasted-bd687-firebase-adminsdk-ikfv0-0f034e57be.json
