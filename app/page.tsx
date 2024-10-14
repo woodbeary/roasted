@@ -13,13 +13,14 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'fire
 import ReCAPTCHA from "react-google-recaptcha";
 import OpenAI from 'openai';
 import imageCompression from 'browser-image-compression';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
 
 // Update the OpenAI initialization
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY!,
   dangerouslyAllowBrowser: true
 });
+
+const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL || 'http://localhost:3000';
 
 export default function LandingPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -34,8 +35,6 @@ export default function LandingPage() {
   const [socialUsername, setSocialUsername] = useState<string>('');
   const [gptResponse, setGptResponse] = useState<any>(null);
   const [socialMediaImageUrl, setSocialMediaImageUrl] = useState<string | null>(null);
-  const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
-  const [sessionSubmitted, setSessionSubmitted] = useSessionStorage<boolean>('hasSubmittedSession', false);
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
 
@@ -46,14 +45,9 @@ export default function LandingPage() {
   });
 
   useEffect(() => {
-    const checkLocalStorage = () => {
-      const submitted = localStorage.getItem('hasSubmitted');
-      if (submitted) {
-        setHasSubmitted(true);
-      }
-    };
-
-    checkLocalStorage();
+    if (typeof window !== 'undefined' && window.location.href !== DEMO_URL) {
+      window.location.href = DEMO_URL;
+    }
   }, []);
 
   useEffect(() => {
@@ -98,11 +92,6 @@ export default function LandingPage() {
   const handleSubmit = async () => {
     if (!captchaValue) {
       alert("Please complete the CAPTCHA");
-      return;
-    }
-
-    if (hasSubmitted || sessionSubmitted) {
-      alert("You have already submitted a roast request.");
       return;
     }
 
@@ -175,11 +164,6 @@ export default function LandingPage() {
 
       console.log("Document written with ID: ", docRef.id);
 
-      // Set local storage and session storage
-      localStorage.setItem('hasSubmitted', 'true');
-      setSessionSubmitted(true);
-      setHasSubmitted(true);
-
       setIsLoading(false);
     } catch (error) {
       console.error("Error processing image:", error);
@@ -211,7 +195,7 @@ export default function LandingPage() {
 
   const blobToBase64 = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+      const reader = new FileReader;
       reader.onloadend = () => resolve(reader.result as string);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
@@ -285,9 +269,9 @@ export default function LandingPage() {
             <Button 
               onClick={handleSubmit} 
               className="flex-grow bg-purple-600 hover:bg-purple-700"
-              disabled={!email || !captchaValue || hasSubmitted || sessionSubmitted}
+              disabled={!email || !captchaValue}
             >
-              {hasSubmitted || sessionSubmitted ? 'Already Submitted' : 'Submit Selfie'}
+              Submit Selfie
             </Button>
           </div>
           <div className="recaptcha-container">
@@ -363,27 +347,11 @@ export default function LandingPage() {
 
         <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center">
           <h2 className="text-2xl font-bold mb-4">Are You Ready to Get Roasted?</h2>
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-green-500 hover:bg-green-600" disabled={hasSubmitted || sessionSubmitted}>
-                {hasSubmitted || sessionSubmitted ? 'Already Submitted' : 'Start Your Roast'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] dialog-content">
-              <DialogHeader>
-                <DialogTitle>
-                  {roastResult ? "Results" : (isLoading ? "Calculating..." : "Good luck!")}
-                </DialogTitle>
-              </DialogHeader>
-              {hasCameraPermission === null ? (
-                <div className="space-y-4">
-                  <p>Requesting camera access...</p>
-                </div>
-              ) : hasCameraPermission ? (
-                renderCameraContent()
-              ) : null}
-            </DialogContent>
-          </Dialog>
+          <a href="http://localhost:3000">
+            <Button className="bg-green-500 hover:bg-green-600">
+              Start Your Roast
+            </Button>
+          </a>
         </section>
 
         <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center space-y-6">
