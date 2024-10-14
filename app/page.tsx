@@ -20,8 +20,6 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
-const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL || 'http://localhost:3000';
-
 export default function LandingPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -43,12 +41,6 @@ export default function LandingPage() {
     month: 'long',
     day: 'numeric'
   });
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.href !== DEMO_URL) {
-      window.location.href = DEMO_URL;
-    }
-  }, []);
 
   useEffect(() => {
     if (isModalOpen) {
