@@ -339,7 +339,7 @@ export default function LandingPage() {
 
         <section className="bg-white bg-opacity-10 rounded-xl p-6 shadow-lg text-center">
           <h2 className="text-2xl font-bold mb-4">Are You Ready to Get Roasted?</h2>
-          <a href="http://localhost:3000">
+          <a href="https://realtimeroasts.vercel.app">
             <Button className="bg-green-500 hover:bg-green-600">
               Start Your Roast
             </Button>
